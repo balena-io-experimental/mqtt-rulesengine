@@ -1,0 +1,13 @@
+FROM resin/%%RESIN_MACHINE_NAME%%-node:7
+
+ENTRYPOINT ["/usr/local/bin/npm"]
+CMD ["start"]
+
+WORKDIR /src
+COPY package.json /src/package.json
+RUN npm install
+
+COPY default.js .
+COPY index.html .
+COPY browser.js .
+

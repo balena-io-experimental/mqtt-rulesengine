@@ -17,7 +17,8 @@ const
   dashboardPort = process.env.PORT,
   devices     = _.fromPairs(_.map(_.split(process.env.DEVICES, ','), pair => {
     return _.split(pair, '=')
-  }))
+  })),
+  republish   = !(process.env.DRY_RUN == 1)
 
 // set up connections
 const
@@ -28,7 +29,9 @@ const handlers = {
   default: [
     (channel, room, message, topic) => {
       // Store raw data in redis and log it
-      redisClient.rpush(topic, message)
+      if (republish) {
+        redisClient.rpush(topic, message)
+      }
     },
   ],
   sensors: [
@@ -58,13 +61,44 @@ const handlers = {
         timestamp: timestamp
       })
     }
+  ],
+  temperature: [
+    (channel, room, message) => {
+      const readings = []
+
+      return (channel, room, message) => {
+        const data = JSON.parse(message)
+        readings.push(data.value)
+
+        if (readings.length > 10) {
+          readings.unshift()
+        }
+        console.log(readings)
+
+        if (_.mean(readings) > 67.0) {
+          return
+        }
+
+        publishToMqtt(channel, 'furnace', {
+          type: 'bool',
+          kind: 'action',
+          value: true,
+          device: 'furnace1',
+          timestamp: (new Date()).getTime()
+        }, 'furnace1')
+      }
+    }
   ]
 }
 
 const publishToMqtt = (channel, room, data, ...suffixes) => {
   const topic = _.join(_.flatten([channel, room, suffixes]), '/')
 
-  return mqttClient.publish(topic, JSON.stringify(data))
+  if (republish) {
+    return mqttClient.publish(topic, JSON.stringify(data))
+  } else {
+    return
+  }
 }
 
 redisClient.on("error", (err) => {
@@ -106,6 +140,10 @@ io.on('connection', function (socket) {
     _.set(handlers, 'humidity', [])
   }
 
+  if (handlers.events == null) {
+    _.set(handlers, 'events', [])
+  }
+
   handlers.temperature.push((channel, room, message) => {
     const data = JSON.parse(message)
     socket.emit('updateChart', _.merge(data, {
@@ -117,6 +155,16 @@ io.on('connection', function (socket) {
     const data = JSON.parse(message)
     socket.emit('updateChart', _.merge(data, {
       device_name: _.get(devices, data.device, 'unknown')
+    }))
+  })
+
+  handlers.events.push((channel, room, message) => {
+    console.log('adding motion event')
+    const data = JSON.parse(message)
+    socket.emit('addEvent', _.merge(data, {
+      device: {
+        name: _.get(devices, data.device, 'unknown')
+      }
     }))
   })
 });

@@ -15,6 +15,36 @@ $(document).ready(function () {
     socket.emit('clients', 'browser client connected');
   });
 
+  socket.on('addEvent', function (data) {
+    _.forEach(charts, function (chart) {
+
+      // try to get the current series
+      var currentSeries = _.get(series, data.device, null)
+      if (currentSeries == null) {
+        // if we haven't plotted this series yet, create a new series
+        _.set(series, data.device, maxSeries)
+        currentSeries = _.get(series, data.device)
+        maxSeries = maxSeries + 1
+      }
+
+      if (chart.series[currentSeries] == null) {
+        chart.addSeries({
+          type: 'flags',
+          name: 'Events',
+          shape: 'squarepin',
+          y: -30,
+          data: [],
+          showInLegend: false
+        })
+      }
+
+      chart.series[currentSeries].addPoint({
+        x: (new Date()).getTime(),
+        title: 'motion triggered',
+      }, true, appendPoint(chart, 0, 500));
+    })
+  })
+
   socket.on('updateChart', function (data) {
     // create a chart for this kind of data, if we don't have one yet
     if (_.get(charts, data.kind) == null) {
@@ -200,6 +230,6 @@ var renderGauge = function (container) {
       }
     }]
   }));
-  */
 }
+*/
 

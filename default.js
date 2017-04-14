@@ -73,7 +73,7 @@ const handlers = {
           type: data.type,
           kind: data.kind,
           value: data.value,
-          device: data.devic.id,
+          device: data.device.id,
           timestamp: timestamp
         })
       } else {

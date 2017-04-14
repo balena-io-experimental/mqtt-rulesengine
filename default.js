@@ -48,8 +48,18 @@ const handlers = {
       }
 
       if (id !== deviceId) {
-        console.error('device ID and published topic do not match')
+        console.error('device ID and published topic do not match!')
         return
+      }
+
+      if (data.lightlevel != null) {
+        publishToMqtt(channel, 'lightlevel', {
+          type: 'float',
+          kind: 'lightlevel',
+          value: data.lightlevel,
+          device: deviceId,
+          timestamp: timestamp
+        })
       }
 
       publishToMqtt(channel, 'temperature', {
@@ -167,6 +177,17 @@ io.on('connection', function (socket) {
   if (handlers.events == null) {
     _.set(handlers, 'events', [])
   }
+
+  if (handlers.lightlevel == null) {
+    _.set(handlers, 'lightlevel', [])
+  }
+
+  handlers.lightlevel.push((channel, room, message) => {
+    const data = JSON.parse(message)
+    socket.emit('updateChart', _.merge(data, {
+      device_name: _.get(devices, data.device, 'unknown')
+    }))
+  })
 
   handlers.temperature.push((channel, room, message) => {
     const data = JSON.parse(message)

@@ -49,7 +49,7 @@ const handlers = {
 
       if (id !== deviceId) {
         console.error('device ID and published topic do not match!')
-        console.error(message, data)
+        console.error(topic, id, data)
         return
       }
 

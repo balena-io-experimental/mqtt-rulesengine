@@ -40,44 +40,66 @@ const handlers = {
       const timestamp = (new Date()).getTime()
       const data = JSON.parse(message)
 
-      let deviceId
       if (data.apiVersion == "2.0.0") {
-        deviceId = data.device.id
-      } else {
-        deviceId = data.device
-      }
+        if (id !== data.device.id) {
+          console.error('device ID and published topic do not match!')
+          console.error(topic, id, data)
+          return
+        }
 
-      if (id !== deviceId) {
-        console.error('device ID and published topic do not match!')
-        console.error(topic, id, data)
-        return
-      }
-
-      if (data.lightlevel != null) {
-        publishToMqtt(channel, 'lightlevel', {
+        publishToMqtt(channel, 'temperature', {
           type: 'float',
-          kind: 'lightlevel',
-          value: data.lightlevel,
-          device: deviceId,
+          kind: 'temperature',
+          value: data.temperature,
+          device: data.device.id,
+          timestamp: timestamp
+        })
+
+        publishToMqtt(channel, 'humidity', {
+          type: 'float',
+          kind: 'humidity',
+          value: data.humidity,
+          device: data.device.id,
+          timestamp: timestamp
+        })
+      } else if (data.apiVersion == "3.0.0") {
+        if (id !== data.device.id) {
+          console.error('device ID and published topic do not match!')
+          console.error(topic, id, data)
+          return
+        }
+
+        publishToMqtt(channel, data.kind, {
+          type: data.type,
+          kind: data.kind,
+          value: data.value,
+          device: data.devic.id,
+          timestamp: timestamp
+        })
+      } else {
+        if (id !== data.device) {
+          console.error('device ID and published topic do not match!')
+          console.error(topic, id, data)
+          return
+        }
+
+        publishToMqtt(channel, 'temperature', {
+          type: 'float',
+          kind: 'temperature',
+          value: data.temperature,
+          device: data.device,
+          timestamp: timestamp
+        })
+
+        publishToMqtt(channel, 'humidity', {
+          type: 'float',
+          kind: 'humidity',
+          value: data.humidity,
+          device: data.device,
           timestamp: timestamp
         })
       }
 
-      publishToMqtt(channel, 'temperature', {
-        type: 'float',
-        kind: 'temperature',
-        value: data.temperature,
-        device: deviceId,
-        timestamp: timestamp
-      })
-
-      publishToMqtt(channel, 'humidity', {
-        type: 'float',
-        kind: 'humidity',
-        value: data.humidity,
-        device: deviceId,
-        timestamp: timestamp
-      })
     }
   ],
   temperature: [

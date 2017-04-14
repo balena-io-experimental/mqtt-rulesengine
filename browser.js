@@ -64,9 +64,11 @@ $(document).ready(function () {
     }
 
     if (chart.series[currentSeries] == null) {
-      chart.addSeries({
-        name: `${data.device_name} (${data.device})`,
-        data: []
+      $.get(`/data/${data.kind}/${data.device}`, function (data) {
+        chart.addSeries({
+          name: `${data.device_name} (${data.device})`,
+          data: JSON.parse(data)
+        })
       })
     }
 

@@ -40,7 +40,14 @@ const handlers = {
       const timestamp = (new Date()).getTime()
       const data = JSON.parse(message)
 
-      if (id !== data.device) {
+      let deviceId
+      if (data.apiVersion == "2.0.0") {
+        deviceId = data.device.id
+      } else {
+        deviceId = data.device
+      }
+
+      if (id !== deviceId) {
         console.error('device ID and published topic do not match')
         return
       }
@@ -49,7 +56,7 @@ const handlers = {
         type: 'float',
         kind: 'temperature',
         value: data.temperature,
-        device: data.device,
+        device: deviceId,
         timestamp: timestamp
       })
 
@@ -57,7 +64,7 @@ const handlers = {
         type: 'float',
         kind: 'humidity',
         value: data.humidity,
-        device: data.device,
+        device: deviceId,
         timestamp: timestamp
       })
     }
@@ -114,6 +121,23 @@ mqttClient.on('connect', () => {
 
 app.get('/', (req, res) => {
   res.render('./index.html')
+})
+
+app.get('/data/:room/:deviceId', (req, res) => {
+  redisClient.lrange('Wxec0cXgwgC9KwBK/'+req.params.room, -1000, -1, (err, results) => {
+    const data = _.map(_.filter(results, result => {
+      return JSON.parse(result).device == req.params.deviceId
+    }), result => {
+      const obj = JSON.parse(result)
+
+      return {
+        x: obj.timestamp,
+        y: obj.value
+      }
+    })
+
+    res.status(200).send(JSON.stringify(data))
+  })
 })
 
 mqttClient.on('message', (topic, message) => {

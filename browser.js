@@ -19,11 +19,11 @@ $(document).ready(function () {
     _.forEach(charts, function (chart) {
 
       // try to get the current series
-      var currentSeries = _.get(series, data.device, null)
+      var currentSeries = _.get(series, data.device.id, null)
       if (currentSeries == null) {
         // if we haven't plotted this series yet, create a new series
-        _.set(series, data.device, maxSeries)
-        currentSeries = _.get(series, data.device)
+        _.set(series, data.device.id, maxSeries)
+        currentSeries = _.get(series, data.device.id)
         maxSeries = maxSeries + 1
       }
 
@@ -46,6 +46,7 @@ $(document).ready(function () {
   })
 
   socket.on('updateChart', function (data) {
+    console.log(data)
     // create a chart for this kind of data, if we don't have one yet
     if (_.get(charts, data.kind) == null) {
       _.set(charts, data.kind, renderChart(data.kind))
@@ -55,19 +56,19 @@ $(document).ready(function () {
     var chart = _.get(charts, data.kind)
 
     // try to get the current series
-    var currentSeries = _.get(series, data.device, null)
+    var currentSeries = _.get(series, data.device.id, null)
     if (currentSeries == null) {
       // if we haven't plotted this series yet, create a new series
-      _.set(series, data.device, maxSeries)
-      currentSeries = _.get(series, data.device)
+      _.set(series, data.device.id, maxSeries)
+      currentSeries = _.get(series, data.device.id)
       maxSeries = maxSeries + 1
     }
 
     if (chart.series[currentSeries] == null) {
-      $.get(`/data/${data.kind}/${data.device}`, function (data) {
+      $.get(`/data/${data.kind}/${data.device.id}`, function (res) {
         chart.addSeries({
-          name: `${data.device_name} (${data.device})`,
-          data: JSON.parse(data)
+          name: `${data.device.name} (${data.device.id})`,
+          data: JSON.parse(res)
         })
       })
     }

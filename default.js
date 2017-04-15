@@ -20,6 +20,8 @@ const
   })),
   republish   = !(process.env.DRY_RUN == 1)
 
+console.log('devices: ', devices)
+
 // set up connections
 const
   mqttClient  = mqtt.connect(mqttServer),
@@ -40,60 +42,17 @@ const handlers = {
       const timestamp = (new Date()).getTime()
       const data = JSON.parse(message)
 
-      if (data.apiVersion == "2.0.0") {
-        if (id !== data.device.id) {
-          console.error('device ID and published topic do not match!')
-          console.error(topic, id, data)
-          return
-        }
-
-        publishToMqtt(channel, 'temperature', {
-          type: 'float',
-          kind: 'temperature',
-          value: data.temperature,
-          device: data.device.id,
-          timestamp: timestamp
-        })
-
-        publishToMqtt(channel, 'humidity', {
-          type: 'float',
-          kind: 'humidity',
-          value: data.humidity,
-          device: data.device.id,
-          timestamp: timestamp
-        })
-      } else if (data.apiVersion == "3.0.0") {
+      if (data.apiVersion == "3.0.0") {
         if (id !== data.device.id) {
           console.error('device ID and published topic do not match!')
           console.error(topic, id, data)
           return
         }
         data.timestamp = timestamp
-        data.device = data.device.id
 
         publishToMqtt(channel, data.kind, data)
       } else {
-        if (id !== data.device) {
-          console.error('device ID and published topic do not match!')
-          console.error(topic, id, data)
-          return
-        }
-
-        publishToMqtt(channel, 'temperature', {
-          type: 'float',
-          kind: 'temperature',
-          value: data.temperature,
-          device: data.device,
-          timestamp: timestamp
-        })
-
-        publishToMqtt(channel, 'humidity', {
-          type: 'float',
-          kind: 'humidity',
-          value: data.humidity,
-          device: data.device,
-          timestamp: timestamp
-        })
+        console.log('invalid apiVersion: ', topic, message)
       }
     }
   ],
@@ -118,7 +77,9 @@ const handlers = {
           type: 'bool',
           kind: 'action',
           value: true,
-          device: 'furnace1',
+          device: {
+            name: 'furnace1',
+          },
           timestamp: (new Date()).getTime()
         }, 'furnace1')
       }
@@ -154,7 +115,7 @@ app.get('/', (req, res) => {
 app.get('/data/:room/:deviceId', (req, res) => {
   redisClient.lrange('Wxec0cXgwgC9KwBK/'+req.params.room, -1000, -1, (err, results) => {
     const data = _.map(_.filter(results, result => {
-      return JSON.parse(result).device == req.params.deviceId
+      return JSON.parse(result).device.id == req.params.deviceId
     }), result => {
       const obj = JSON.parse(result)
 
@@ -202,22 +163,26 @@ io.on('connection', function (socket) {
 
   handlers.lightlevel.push((channel, room, message) => {
     const data = JSON.parse(message)
-    socket.emit('updateChart', _.merge(data, {
-      device_name: _.get(devices, data.device, 'unknown')
-    }))
+    console.log(data)
+    data.device.name = _.get(devices, data.device.id, 'unknown')
+    socket.emit('updateChart', data)
   })
 
   handlers.temperature.push((channel, room, message) => {
     const data = JSON.parse(message)
     socket.emit('updateChart', _.merge(data, {
-      device_name: _.get(devices, data.device, 'unknown')
+      device: {
+        name: _.get(devices, data.device.id, 'unknown')
+      }
     }))
   })
 
   handlers.humidity.push((channel, room, message) => {
     const data = JSON.parse(message)
     socket.emit('updateChart', _.merge(data, {
-      device_name: _.get(devices, data.device, 'unknown')
+      device: {
+        name: _.get(devices, data.device.id, 'unknown')
+      }
     }))
   })
 
@@ -226,7 +191,7 @@ io.on('connection', function (socket) {
     const data = JSON.parse(message)
     socket.emit('addEvent', _.merge(data, {
       device: {
-        name: _.get(devices, data.device, 'unknown')
+        name: _.get(devices, data.device.id, 'unknown')
       }
     }))
   })

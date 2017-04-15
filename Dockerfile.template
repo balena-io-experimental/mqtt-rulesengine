@@ -8,6 +8,4 @@ COPY package.json /src/package.json
 RUN npm install
 
 COPY default.js .
-COPY index.html .
-COPY browser.js .
 

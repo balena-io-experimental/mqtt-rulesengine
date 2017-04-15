@@ -68,14 +68,10 @@ const handlers = {
           console.error(topic, id, data)
           return
         }
+        data.timestamp = timestamp
+        data.device = data.device.id
 
-        publishToMqtt(channel, data.kind, {
-          type: data.type,
-          kind: data.kind,
-          value: data.value,
-          device: data.device.id,
-          timestamp: timestamp
-        })
+        publishToMqtt(channel, data.kind, data)
       } else {
         if (id !== data.device) {
           console.error('device ID and published topic do not match!')
@@ -99,7 +95,6 @@ const handlers = {
           timestamp: timestamp
         })
       }
-
     }
   ],
   temperature: [
